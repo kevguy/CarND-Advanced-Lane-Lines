@@ -64,11 +64,17 @@ I then used the output `objpoints` and `imgpoints` to compute the camera calibra
 coefficients using the `cv2.calibrateCamera()` function. I applied this distortion correction to the test
 image using the `cv2.undistort()` function and obtained this result:
 
+Chessboard 1 Original
 ![alt text][image7]
+Chessboard 1 Undistorted
 ![alt text][image8]
+Chessboard 3 Original
 ![alt text][image9]
+Chessboard 3 Undistorted
 ![alt text][image10]
+Chessboard 19 Original
 ![alt text][image11]
+Chessboard 19 Undistorted
 ![alt text][image12]
 
 
@@ -88,11 +94,17 @@ The code for my perspective transform is included in a function called transform
 
 Here is an example of a test image transformed to a top-down view.
 
+Input 419
 ![alt text][image13]
+Input 419 (Topdown)
 ![alt text][image14]
+Input 838
 ![alt text][image15]
+Input 838 (Topdown)
 ![alt text][image16]
+Input 1257
 ![alt text][image17]
+Input 1257 (Topdown)
 ![alt text][image18]
 
 
@@ -116,19 +128,29 @@ It's just an OR combination of all the three techniques.
 
 
 Here are some examples:
+Input 419
 ![alt text][image19]
+Input 419 (Thresholding)
 ![alt text][image20]
+Input 838
 ![alt text][image21]
+Input 838 (Thresholding)
 ![alt text][image22]
+Input 1257
 ![alt text][image23]
+Input 1257 (Thresholding)
 ![alt text][image24]
+
 
 
 ###Detecting lane lines
 Lane line detection is done using the sliding windows approach. First we take all the line points detected for the bottom half of the image and detect theleft and right lane lines. We define a window and find all the nonzero values inside, store them as lane points, then slide up the window and repeat. Fially, we fit a parabola for the points detected, which we can use for lane line calculation for any point later.
 
+Input 419 (Slidewindow)
 ![alt text][image25]
+Input 838 (Slidewindow)
 ![alt text][image26]
+Input 1257 (Slidewindow)
 ![alt text][image27]
 
 
@@ -174,8 +196,11 @@ else:
 	lane_offset = 0
 ```
 
+Input 419 (Output)
 ![alt text][image28]
+Input 838 (Output)
 ![alt text][image29]
+Input 1257 (Output)
 ![alt text][image30]
 
 
@@ -213,6 +238,8 @@ def process_image(self, image):
 		lefty = lefty,
 		righty = righty)
 ```
+Here's a [link to my video result](https://youtu.be/RxcDBK14jNc)
+
 
 ### Conclusion
 The whole approach works on the project video, but not the challenge video. I guess there's more to the thresholding approach I adopt that needs to be perfected since the current thresholding approach may introduce 'outliers' that we don't want, which may need further thresholidng to eliminate.
