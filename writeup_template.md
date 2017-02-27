@@ -74,7 +74,7 @@ image using the `cv2.undistort()` function and obtained this result:
 
 ###Transforming an image
 
-The code for my perspective transform is included in a function called transform_to_top_down(). Each image is transformed to a top-down view in order to clearly see the lane. The warper() function takes as inputs an image ( img ), as well as source ( src ) and destination ( dst ) points. I chose to hardcode the source and destination points in the following manner:
+The code for my perspective transform is included in a function called `transform_to_top_down()` in `run_all.py`. Each image is transformed to a top-down view in order to clearly see the lane. The warper() function takes as inputs an image ( img ), as well as source ( src ) and destination ( dst ) points. I chose to hardcode the source and destination points in the following manner:
 
 
 | Source               | Destination    | 
@@ -82,12 +82,13 @@ The code for my perspective transform is included in a function called transform
 | 585.714, 456.34      | 300, 70        | 
 | 699.041, 456.34      | 1000, 70       |
 | 1029.17, 667.617     | 1000, 600      |
-| 290.454, 667.617     | 300, 600        |
+| 290.454, 667.617     | 300, 600       |
 
 
 
 Here is an example of a test image transformed to a top-down view.
 #### Examples
+
 | Original                   |  Topdown                   |
 |:--------------------------:|:--------------------------:|
 |![alt text][image13]        |  ![alt text][image14]      |
@@ -115,6 +116,7 @@ It's just an OR combination of all the three techniques.
 
 ####Examples:
 Here are some examples:
+
 | Original                   |  Thresholding              |
 |:--------------------------:|:--------------------------:|
 |![alt text][image19]        |  ![alt text][image20]      |

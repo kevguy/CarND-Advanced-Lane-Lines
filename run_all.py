@@ -4,9 +4,6 @@ import cv2
 
 from calibration import load_calibration_results
 
-from lane import Lane
-from lanes import Lanes
-
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
@@ -181,9 +178,9 @@ class allStuff:
 		image = self.overlay_text(image, "Lane Offset: {0:.2f}m".format(lane_offset), pos=(10, 170))
 
 
-		# if (self.img_count % 419 == 0):	
-			# plt.imshow(image)
-			# plt.savefig('./output_images/' + str(self.img_count) + '_output.png')
+		if (self.img_count % 419 == 0):	
+			plt.imshow(image)
+			plt.savefig('./output_images/' + str(self.img_count) + '_output.png')
 		self.img_count += 1
 		
 		return image
@@ -422,20 +419,20 @@ if __name__ == "__main__":
 	np.seterr(all="ignore")
 
 	stuff = allStuff()
-	images_glob = glob.glob("camera_cal/calibration*.jpg")
 
-	# image_shape = mpimg.imread(images_glob[0]).shape[1::-1]
-
-	
-	count = 1
-	for filepath in images_glob:
-		print(count)
-		img = mpimg.imread(filepath)
-		stuff.process_image(img)
-
-		count += 1;
+	# for images
+	# images_glob = glob.glob("camera_cal/calibration*.jpg")
 
 
-	# clip1 = VideoFileClip("./project_video.mp4")
-	# white_clip = clip1.fl_image(stuff.process_image)
-	# white_clip.write_videofile("./output_images/project_image.mp4", audio=False)
+	# count = 1
+	# for filepath in images_glob:
+	# 	print(count)
+	# 	img = mpimg.imread(filepath)
+	# 	stuff.process_image(img)
+
+	# 	count += 1;
+
+	# for video
+	clip1 = VideoFileClip("./project_video.mp4")
+	white_clip = clip1.fl_image(stuff.process_image)
+	white_clip.write_videofile("./output_images/project_image.mp4", audio=False)
