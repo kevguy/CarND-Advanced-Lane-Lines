@@ -11,8 +11,8 @@ class LaneAverage:
         self.__ys.append(lane.ys)
 
         # limit arrays to last 3 lanes only
-        self.__xs = self.__xs[-3:]
-        self.__ys = self.__ys[-3:]
+        self.__xs = self.__xs[-20:]
+        self.__ys = self.__ys[-20:]
 
         self.lane = Lane(self.xs, self.ys)
 
