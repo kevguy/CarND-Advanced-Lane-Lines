@@ -11,9 +11,20 @@ import matplotlib.pyplot as plt
 
 import glob
 import matplotlib.image as mpimg
+import math
+
+from lanes_average import LanesAverage
+from lane import Lane
+from lanes import Lanes
 
 X_METER_PER_PIXEL = 3.7/700
 Y_METER_PER_PIXEL = 30/720
+
+to_meters = np.array([[X_METER_PER_PIXEL, 0],
+						[0, Y_METER_PER_PIXEL]])
+
+def in_meters(point):
+	return np.dot(point, to_meters)
 
 class Line():
 	def __init__(self):
@@ -57,8 +68,28 @@ class allStuff:
 
 		self.img_count = 1
 
-		self.to_meters = np.array([[X_METER_PER_PIXEL, 0],
-						[0, Y_METER_PER_PIXEL]])
+		self.to_meters = np.array([[3.7/700, 0],
+						[0, 30/720]])
+
+		self.leftx = None
+		self.rightx = None
+		self.lefty = None
+		self.righty = None
+		self.left_fit = None
+		self.right_fit = None
+		self.left_curverad = 0
+		self.right_curverad = 0
+
+		self.left_xs = []
+		self.left_ys = []
+		self.right_xs = []
+		self.right_ys = []
+
+		self.dist = 0
+		self.init = False
+
+		self.last_lanes = None
+		self.lanes_average = LanesAverage()
 	
 	def p1(self, fit):
 		"""first derivative"""
@@ -79,14 +110,14 @@ class allStuff:
 	def in_meters(self, point):
 		return np.dot(point, self.to_meters)
 
-	def distance_from_center(self, center, leftx, rightx, lefty, righty):
-		center = self.in_meters(center)
-		center_x, center_y = center
+	# def distance_from_center(self, center, leftx, rightx, lefty, righty):
+	# 	center = self.in_meters(center)
+	# 	center_x, center_y = center
 
-		right_x = self.p(rightx, center_y)
-		left_x = self.p(leftx, center_y)
+	# 	right_x = self.p(rightx, center_y)
+	# 	left_x = self.p(leftx, center_y)
 
-		return ((right_x + left_x)/2 - center_x)
+	# 	return ((right_x + left_x)/2 - center_x)
 
 	# drawing lane functions
 	def overlay_text(self, image, text, pos=(0, 0), color=(255, 255, 255)):
@@ -177,10 +208,9 @@ class allStuff:
 		image = self.overlay_text(image, "Right curvature: {0:.2f}m".format(right_curverad), pos=(10, 90))
 		image = self.overlay_text(image, "Lane Offset: {0:.2f}m".format(lane_offset), pos=(10, 170))
 
-
-		if (self.img_count % 419 == 0):	
-			plt.imshow(image)
-			plt.savefig('./output_images/' + str(self.img_count) + '_output.png')
+		# if (self.img_count % 419 == 0):	
+		# 	plt.imshow(image)
+		# 	plt.savefig('./output_images/' + str(self.img_count) + '_output.png')
 		self.img_count += 1
 		
 		return image
@@ -260,6 +290,29 @@ class allStuff:
 		combined[(reds == 1) | (saturation == 1) | (gradx == 1)] = 1
 		return combined
 
+
+	def sample_detect_lane_lines(self, image, last_lanes):
+		nonzero = image.nonzero()
+		nonzero_x, nonzero_y = np.array(nonzero[1]), np.array(nonzero[0])
+
+		last_left_p = np.poly1d(last_lanes.left.pixels.fit)
+		last_right_p = np.poly1d(last_lanes.right.pixels.fit)
+
+		margin = 100
+
+		left_lane_indices = ((nonzero_x > (last_left_p(nonzero_y) - margin)) &
+		                     (nonzero_x < (last_left_p(nonzero_y) + margin)))
+
+		right_lane_indices = ((nonzero_x > (last_right_p(nonzero_y) - margin)) &
+		                      (nonzero_x < (last_right_p(nonzero_y) + margin)))
+
+		# Again, extract left and right line pixel positions
+		leftx = nonzero_x[left_lane_indices]
+		lefty = nonzero_y[left_lane_indices]
+		rightx = nonzero_x[right_lane_indices]
+		righty = nonzero_y[right_lane_indices]
+
+		return leftx, lefty, rightx, righty, image
 
 
 	# detect lane lines
@@ -350,11 +403,20 @@ class allStuff:
 		rightx = nonzerox[right_lane_inds]
 		righty = nonzeroy[right_lane_inds] 
 
-		# Fit a second order polynomial to each
-		left_fit = np.polyfit(lefty, leftx, 2)
-		right_fit = np.polyfit(righty, rightx, 2)
+		# # Fit a second order polynomial to each
+		# left_fit = np.polyfit(lefty, leftx, 2)
+		# right_fit = np.polyfit(righty, rightx, 2)
 
-		return leftx, lefty, rightx, righty, left_fit, right_fit, out_img
+		print('leftx, lefty, rightx, righty, out_img')
+
+		return leftx, lefty, rightx, righty, out_img
+
+	def whole_detect_lane_lines(self, image, last_lanes):
+		if(last_lanes is None):
+			return self.detect_lane_lines(image)
+		else:
+			return self.sample_detect_lane_lines(image, last_lanes)
+
 
 	def process_image(self, image):
 		img_height, img_width, _ = image.shape
@@ -378,39 +440,93 @@ class allStuff:
 			# plt.imshow(bin_image, 'gray')
 			# plt.savefig('./output_images/' + str(self.img_count) + '_threshold.png')
 
-		leftx, lefty, rightx, righty, left_fit, right_fit, out = self.detect_lane_lines(bin_image)
+		leftx, lefty, rightx, righty, out = self.whole_detect_lane_lines(bin_image, self.last_lanes)
 
-		# if (self.img_count % 419 == 0):
-			# f, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 10))
-			# f.tight_layout()
+		left = Lane(leftx, lefty)
+		right = Lane(rightx, righty)
 
-			# ax1.set_title("Sliding windows used in detection")
-			# ax1.imshow(out, cmap="gray")
+		lanes = Lanes(left, right)
 
-			# ax2.set_title("Fitted lines found in detection")
-			# ax2.imshow(bin_image, cmap="gray");
+		self.lanes_average.update(lanes)
 
-			# # Left lane
-			# left_p = np.poly1d(left_fit)
-			# left_xp = np.linspace(0, 720, 100)
-			# ax2.plot(left_p(left_xp), left_xp)
+		if self.last_lanes is None:
+			self.last_lanes = lanes
 
-			# # Right lane
-			# right_p = np.poly1d(right_fit)
-			# right_xp = np.linspace(0, 720, 100)
-			# ax2.plot(right_p(right_xp), right_xp)
+		if lanes.lanes_parallel(img_height) and lanes.distance_from_center((img_width/2, img_height)) < 4.0:
+			self.last_lanes = lanes
 
-			# f.savefig('./output_images/' + str(self.img_count) + '_slidewindow.png')
-		
+		self.output = self.draw_overlays(
+					image = image,
+					left_fit = self.lanes_average.lanes.left.pixels.fit,
+					right_fit = self.lanes_average.lanes.right.pixels.fit,
+					leftx = self.lanes_average.left.xs,
+					rightx = self.lanes_average.right.xs,
+					lefty = self.lanes_average.left.ys,
+					righty = self.lanes_average.right.ys)
 
-		return self.draw_overlays(
-			image = image,
-			left_fit = left_fit,
-			right_fit = right_fit,
-			leftx = leftx,
-			rightx = rightx,
-			lefty = lefty,
-			righty = righty)
+		return self.output
+
+
+	def distance_from_center(self, center, left_fit, right_fit, leftx, lefty, rightx, righty):
+		# print('center')
+		# print(center)
+		center_x, center_y = center
+		# print(center_x)
+		# print(center_y)
+
+		right_x = self.p(rightx, righty)(center_y)
+		left_x = self.p(leftx, lefty)(center_y)
+		# print('left_x')
+		# print(left_x)
+		# print('right_x')
+		# print(right_x)
+		# print('center_x')
+		# print(center_x)
+
+		result = ((right_x + left_x)/2 - center_x)
+		# print('result')
+		print(result)
+		return result
+
+	# def fit_dl(self):
+	# 	return np.polyfit(self.lefty, self.leftx, 2)
+
+	# def fit_dr(self):
+	# 	return np.polyfit(self.righty, self.rightx, 2)
+
+	# def p_dr(self):
+	# 	return np.poly1d(self.fit_dr())
+	
+	# def p_dl(self):
+	# 	return np.poly1d(self.fit_dl())
+
+	# def distance_from_center(self, center, left_fit, right_fit, leftx, lefty, rightx, righty):
+	# 	center = in_meters(center)
+	# 	center_x, center_y = center
+
+	# 	right_x = self.p_dr()(center_y)
+	# 	left_x = self.p_dl()(center_y)
+
+	# 	return ((right_x + left_x)/2 - center_x)
+
+	def lane_distance(self, y, left_fit, right_fit):
+		_, y = self.in_meters((0, y))
+		return (np.poly1d(right_fit)(y) - np.poly1d(left_fit)(y))
+
+	def lanes_parallel(self, height, left_fit, right_fit, samples=50):
+		distance_per_sample = height // samples
+		distances = []
+		for y in range(0, height, distance_per_sample):
+		    distances.append(self.lane_distance(y, left_fit, right_fit))
+
+		std2 = 2*np.std(distances)
+		mean = np.mean(distances)
+		arr = np.array(distances)
+
+		return len(arr[(arr > (mean + std2)) | (arr < (mean - std2))]) == 0
+
+	
+
 
 
 
