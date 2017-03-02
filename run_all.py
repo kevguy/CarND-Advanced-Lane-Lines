@@ -234,50 +234,6 @@ class allStuff:
 		return cv2.warpPerspective(img, self.inverse_transform_matrix(), size_img.shape[1::-1])
 
 	# thresholding
-	def abs_sobel_thresholding(self, img, orient='x', sobel_kernel=3, thresh=(0, 255)):
-		thresh_min, thresh_max = thresh
-
-		# Convert to grayscale
-		gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-
-		# Apply x or y gradient with the OpenCV Sobel() function
-		# and take the absolute value
-		if orient == 'x':
-			abs_sobel = np.absolute(cv2.Sobel(gray, cv2.CV_64F, 1, 0))
-		elif orient == 'y':
-			abs_sobel = np.absolute(cv2.Sobel(gray, cv2.CV_64F, 0, 1))
-
-		# Rescale back to 8 bit integer
-		scaled_sobel = np.uint8(255*abs_sobel/np.max(abs_sobel))
-		# Create a copy and apply the threshold
-		binary_output = np.zeros_like(scaled_sobel)
-		# Here I'm using inclusive (>=, <=) thresholds, but exclusive is ok too
-
-		binary_output[(scaled_sobel >= thresh_min) & (scaled_sobel <= thresh_max)] = 1
-
-		# Return the result
-		return binary_output
-
-	def saturation_thresholding(self, img, thresh=(0, 255)):
-		# convert RGB image to HLS
-		hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
-		# Use only the saturation channel
-		S = hls[:,:,2]
-
-		binary_output = np.zeros_like(S)
-		binary_output[((S > thresh[0]) & (S < thresh[1]))] = 1
-		return binary_output
-
-
-	def red_thresholding(self, img, thresh=(0, 255)):
-		# Use only the red channel
-		R = img[:,:,0]
-
-		# Create a binary mask where the red thresholds are met
-		binary_output = np.zeros_like(R)
-		binary_output[((R > thresh[0]) & (R < thresh[1]))] = 1
-		return binary_output
-
 	def thresholding_op(self, img):
 		# Sobel kernel size
 		ksize = 17 # choose a larger odd number to smooth gradient measurements
@@ -291,22 +247,6 @@ class allStuff:
 		return combined
 
 	def thresholded_binary(self, undistorted_img):
-		"""
-		Computes a binary thresholded image by first using the OpenCV Sobel
-		function to take the gradient in the X direction (finds vertical lines
-		better). Secondly, convert the image to the HSV colour-space and 
-		threshold the S-channel.
-		The result of both of these operations is combined using a bitwise-or
-		to produec our binary thresholded image.
-
-		:param undistorted_img:
-		    Source image for thresholding that has already been undistorted.
-
-		:return:
-		    Returns a colour binary image for visualisation purposes and a
-		    binary thresholded image for use in lane finding.
-		"""
-
 		# Convert to HLS color space and separate the S channel
 		# Note: img is the undistorted image
 		hls = cv2.cvtColor(undistorted_img, cv2.COLOR_RGB2HLS).astype("float")
@@ -340,68 +280,8 @@ class allStuff:
 
 		return color_binary, combined_binary
 
-	def draw_lanes_on_image(binary_warped, undistorted_img, Minv, left_fitx, right_fitx, ploty, left_radius, right_radius, lane_deviation):
-		"""
-		Draw the found lane lines onto a binary warped image, then unwarp
-		and overlay on the original image.
-
-		binary_warped
-		Minv
-		left_fitx
-		right_fitx
-		ploty
-		"""
-
-		# Create a blank image to draw the lines on
-		warp_zero = np.zeros_like(binary_warped).astype(np.uint8)
-		color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
-
-		# Recast the x and y points into usable format for cv2.fillPoly()
-		pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
-		pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
-		pts = np.hstack((pts_left, pts_right))
-
-		# Draw the lane onto the warped blank image
-		cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
-
-		# Warp the blank back to original image space using inverse perspective matrix (Minv)
-		newwarp = cv2.warpPerspective(color_warp, Minv, (undistorted_img.shape[1], undistorted_img.shape[0])) 
-
-		# Combine the result with the original image
-		result = cv2.addWeighted(undistorted_img, 1, newwarp, 0.3, 0)
-
-		curvature_text = "Curvature: Left = " + str(np.round(left_radius, 2)) + ", Right = " + str(np.round(right_radius, 2)) 
-		font = cv2.FONT_HERSHEY_COMPLEX    
-		cv2.putText(result, curvature_text, (30, 60), font, 1, (0,255,0), 2)
-		deviation_text = "Lane deviation from center = {:.2f} m".format(lane_deviation) 
-		font = cv2.FONT_HERSHEY_COMPLEX    
-		cv2.putText(result, deviation_text, (30, 90), font, 1, (0,255,0), 2)
-		    
-		return result
-
+	
 	def find_lane_lines(self, binary_warped, debug=False):
-		"""
-		Find left and right lane lines in the provided binary warped image by initially
-		using a histogram to find the lanes line in the bottom half of the image and then
-		using a sliding window techniqe to iteratively move up and finf the next part of 
-		the lane lines.
-		Returns the points arrays to draw each of the left and right lanes as a 2nd order
-		polynonial as well as the polynomial coefficients.
-
-		:param binary_warped:
-			Binary image that has already been warped (perspective transformed).
-
-		:param debug:
-			Draw the sliding windows onto an output image.
-
-		:returns:
-			left_fitx - x values for plot of left lane
-			right_fitx - x values for plot of right lane
-			ploty - y values for plots of left and right lanes
-			left_fit - 2nd order polynomial coefficients from np.polyfit for left lane
-			right_fit - 2nd order polynomial coefficients from np.polyfit for right lane
-		"""
-
 		if debug == True:
 			# Create an output image to draw on and  visualize the result
 			out_img = np.dstack((binary_warped, binary_warped, binary_warped))*255
@@ -495,31 +375,10 @@ class allStuff:
 
 	def process_image(self, image):
 		img_height, img_width, _ = image.shape
-
-		# if (self.img_count % 419 == 0):
-			# plt.imshow(image)
-			# plt.savefig('./output_images/' + str(self.img_count) + '_input.png')
-
-		bin_image = self.undistort(image)
-		# if (self.img_count % 419 == 0):
-			# plt.imshow(bin_image)
-			# plt.savefig('./output_images/' + str(self.img_count) + '_undistort.png')
-		
-		bin_image = self.transform_to_top_down(bin_image)
-		# if (self.img_count % 419 == 0):
-			# plt.imshow(bin_image)
-			# plt.savefig('./output_images/' + str(self.img_count) + '_topdown.png')
-
-		bin_image = self.thresholding_op(bin_image)
-		# if (self.img_count % 419 == 0):
-			# plt.imshow(bin_image, 'gray')
-			# plt.savefig('./output_images/' + str(self.img_count) + '_threshold.png')
 		
 		undistorted_img = self.undistort(image)
 		color_binary, combined_binary = self.thresholded_binary(undistorted_img)
 		bin_image = self.transform_to_top_down(combined_binary)
-
-
 
 		left_fitx, right_fitx, ploty, left_fit, right_fit, leftx, lefty, rightx, righty = self.find_lane_lines(bin_image)
 		left = Lane(leftx, lefty)

@@ -220,7 +220,7 @@ def process_image(self, image):
 		lefty = lefty,
 		righty = righty)
 ```
-Here's a [link to my video result](https://youtu.be/RxcDBK14jNc)
+Here's a [link to my video result](https://github.com/kevguy/CarND-Advanced-Lane-Lines/blob/master/output_images/project_image.mp4)
 
 
 ### Conclusion
